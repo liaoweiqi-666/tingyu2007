@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!--配置包扫描-->
+    <context:component-scan base-package="com.sxt"/>
+
+    <!--引入数据库配置文件-->
+    <context:property-placeholder location="classpath:db.properties"/>
+
+    <!--配置数据源-->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+        <property name="driverClassName"  value="${jdbc.driverClassName}"/>
+        <property name="url"  value="${jdbc.url}"/>
+        <property name="username"  value="${jdbc.username}"/>
+        <property name="password"  value="${jdbc.password}"/>
+        <property name="maxActive"  value="${jdbc.maxActive}"/>
+    </bean>
+
+
+    <!-- 集成配置MyBatis -->
+
+    <!-- 创建MyBatis的工厂对象SqlSessionfactory -->
+    <bean id="sqlSessionFactory" class="com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean">
+        <!-- 配置数据源 -->
+        <property name="dataSource" ref="dataSource"/>
+
+        <property name="configuration">
+            <!--配置日志输出-->
+            <bean class="com.baomidou.mybatisplus.core.MybatisConfiguration">
+                <property name="logImpl" value="org.apache.ibatis.logging.stdout.StdOutImpl"></property>
+            </bean>
+        </property>
+        <!-- 配置物理分页插件 -->
+        <property name="plugins">
+            <array>
+                <bean class="com.baomidou.mybatisplus.extension.plugins.PaginationInterceptor">
+                    <!-- 配置方言 -->
+                    <property name="dialectType" value="mysql"/>
+                </bean>
+            </array>
+        </property>
+    </bean>
+
+    <!-- 使用包扫描创建mapper包下面所有映射接口的代理对象-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <!-- 配置映射接口的包 -->
+        <property name="basePackage" value="com.sxt.tingyu.mapper"/>
+    </bean>
+
+
+    <!--事务配置 -->
+
+    <!--
+        1,配置事务管理器
+        2,配置事务通知
+        3,使用AOP将事务切入到Service层
+    -->
+    <!--  1,配置事务管理器-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!--2,配置事务通知-->
+    <tx:advice id="txAdvice">
+        <!--
+            DQL : 只读事务
+            DML ： 非只读事务
+        -->
+        <tx:attributes>
+            <!--DQL-->
+            <tx:method name="select*" read-only="true"/>
+            <!--DML-->
+            <tx:method name="*"/>
+        </tx:attributes>
+
+    </tx:advice>
+
+    <!--3,使用AOP将事务切入到Service层-->
+    <aop:config>
+
+        <!--配置切入点-->
+        <aop:pointcut id="pt" expression="execution(* com.sxt.tingyu.service..*.*(..))"/>
+
+        <!--配置切面 切入点+通知-->
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="pt"/>
+
+    </aop:config>
+
+
+</beans>
